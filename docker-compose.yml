@@ -1,0 +1,12 @@
+services:
+  finflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: local
+      DB_CONNECTION: sqlite
+    volumes:
+      - ./database:/var/www/html/database
