@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { formatBrlCents, useFinflowStore } from '@/stores/useFinflowStore'
 
 const store = useFinflowStore()
@@ -12,13 +12,55 @@ const csvContent = ref(
   ].join('\n')
 )
 
+// Lei de Hick (02): Progressive Disclosure para lançamento rápido manual
+const showQuickEntry = ref(false)
+const quickDesc = ref('')
+const quickAmountInput = ref('')
+const quickType = ref<'income' | 'expense'>('expense')
+
 const newRulePattern = ref('')
 const newRuleCategory = ref('')
 const newRulePriority = ref(25)
 
+// Efeito Zeigarnik (10) & Gradiente de Meta (11): Taxa de poupança / saúde operacional
+const savingsRatePct = computed(() => {
+  const income = store.summary.total_income_cents
+  if (income <= 0) return 0
+  return Math.max(0, Math.round((store.summary.net_balance_cents / income) * 100))
+})
+
 onMounted(async () => {
   await store.loadDashboard()
 })
+
+// Lei de Postel (16) & Lei de Tesler (15): Aceita "R$ 45,90", "45.90" ou "4590" e converte para centavos
+function parseFlexibleCurrencyToCents(raw: string): number {
+  const cleaned = raw.replace(/[R$\s]/gi, '').trim()
+  if (!cleaned) return 0
+  if (cleaned.includes(',') || cleaned.includes('.')) {
+    const normalized = cleaned.replace(/\./g, '').replace(',', '.')
+    const floatVal = Number.parseFloat(normalized)
+    return Number.isFinite(floatVal) ? Math.round(floatVal * 100) : 0
+  }
+  const intVal = Number.parseInt(cleaned, 10)
+  return Number.isFinite(intVal) ? intVal : 0
+}
+
+async function handleQuickTransaction() {
+  const amountCents = parseFlexibleCurrencyToCents(quickAmountInput.value)
+  if (!quickDesc.value.trim() || amountCents < 1) return
+
+  await store.addTransaction({
+    description: quickDesc.value.trim(),
+    amount_cents: amountCents,
+    type: quickType.value,
+    occurred_on: new Date().toISOString().slice(0, 10)
+  })
+
+  quickDesc.value = ''
+  quickAmountInput.value = ''
+  showQuickEntry.value = false
+}
 
 async function handleImportCsv() {
   if (!csvContent.value.trim()) return
@@ -39,11 +81,11 @@ async function handleCreateRule() {
 
 <template>
   <div class="min-h-screen bg-[#090D16] text-slate-100">
-    <!-- Header -->
+    <!-- Header (Efeito de Posição Serial 08: Identidade à esquerda, ação rápida à direita) -->
     <header class="border-b border-slate-800/80 bg-[#0F172A]/95">
       <div class="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div class="flex items-center gap-3">
-          <div class="flex h-10 w-10 items-center justify-center rounded-lg border border-cyan-500/40 bg-cyan-500/10 font-mono text-sm font-bold text-cyan-300">
+          <div class="flex h-11 w-11 items-center justify-center rounded-lg border border-cyan-500/40 bg-cyan-500/10 font-mono text-sm font-bold text-cyan-300">
             FF
           </div>
           <div>
@@ -56,16 +98,59 @@ async function handleCreateRule() {
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
-          <span class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 font-mono text-xs text-emerald-300">
-            DB::transaction + SHA-256 Deduplication
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 font-mono text-xs text-emerald-300">
+            Taxa de Retenção: {{ savingsRatePct }}%
           </span>
+          <!-- Lei de Fitts (01) & Lei de Hick (02): Alvo 48px + Revelação Progressiva -->
+          <button
+            type="button"
+            class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:border-cyan-400"
+            @click="showQuickEntry = !showQuickEntry"
+          >
+            {{ showQuickEntry ? 'Fechar Lançamento' : '+ Lançamento Rápido' }}
+          </button>
         </div>
       </div>
     </header>
 
     <main class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
-      <!-- KPI Telemetry Cards -->
+      <!-- Quick Manual Transaction Form (Progressive Disclosure - Lei de Hick 02 & Lei de Postel 16) -->
+      <form
+        v-if="showQuickEntry"
+        class="grid grid-cols-1 gap-3 rounded-xl border border-cyan-500/40 bg-[#0F172A] p-4 sm:grid-cols-4"
+        @submit.prevent="handleQuickTransaction"
+      >
+        <input
+          v-model="quickDesc"
+          type="text"
+          required
+          placeholder="Descrição (ex: Uber Aeroporto)"
+          class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+        />
+        <input
+          v-model="quickAmountInput"
+          type="text"
+          required
+          placeholder="Valor (ex: 45,90 ou 4590)"
+          class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+        />
+        <select
+          v-model="quickType"
+          class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+        >
+          <option value="expense">Despesa (-)</option>
+          <option value="income">Receita (+)</option>
+        </select>
+        <button
+          type="submit"
+          class="min-h-[48px] rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400"
+        >
+          Registrar (Auto-Categoria)
+        </button>
+      </form>
+
+      <!-- KPI Telemetry Cards (Lei de Miller 05 & Conectividade Uniforme 14) -->
       <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div class="rounded-xl border border-slate-800 bg-[#0F172A] p-5">
           <p class="font-mono text-xs text-slate-400 uppercase">Receitas Acumuladas</p>
@@ -116,9 +201,10 @@ async function handleCreateRule() {
               rows="4"
               class="w-full rounded-lg border border-slate-700 bg-slate-950 p-3 font-mono text-xs text-slate-200"
             ></textarea>
+            <!-- Efeito Von Restorff (07) & Lei de Fitts (01): CTA Primário exclusivo com 48px -->
             <button
               type="submit"
-              class="min-h-[44px] w-full rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+              class="min-h-[48px] w-full rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
             >
               Processar Lote CSV em Transação
             </button>
@@ -141,17 +227,17 @@ async function handleCreateRule() {
                 v-model="newRulePattern"
                 type="text"
                 placeholder="Padrão (ex: NETFLIX)"
-                class="min-h-[44px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100"
+                class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100"
               />
               <input
                 v-model="newRuleCategory"
                 type="text"
                 placeholder="Categoria"
-                class="min-h-[44px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100"
+                class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100"
               />
               <button
                 type="submit"
-                class="min-h-[44px] rounded-lg border border-cyan-500/40 bg-cyan-500/15 px-3 py-2 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/25"
+                class="min-h-[48px] rounded-lg border border-cyan-500/40 bg-cyan-500/15 px-3 py-2 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/25"
               >
                 + Criar Regra
               </button>
@@ -179,7 +265,7 @@ async function handleCreateRule() {
               <button
                 type="button"
                 data-testid="filter-type-all"
-                class="min-h-[44px] rounded-lg px-3 py-1.5 text-xs font-semibold"
+                class="min-h-[48px] rounded-lg px-3.5 py-2 text-xs font-semibold"
                 :class="
                   store.typeFilter === 'all'
                     ? 'bg-cyan-500 text-slate-950'
@@ -192,7 +278,7 @@ async function handleCreateRule() {
               <button
                 type="button"
                 data-testid="filter-type-income"
-                class="min-h-[44px] rounded-lg px-3 py-1.5 text-xs font-semibold"
+                class="min-h-[48px] rounded-lg px-3.5 py-2 text-xs font-semibold"
                 :class="
                   store.typeFilter === 'income'
                     ? 'bg-emerald-500 text-slate-950'
@@ -205,7 +291,7 @@ async function handleCreateRule() {
               <button
                 type="button"
                 data-testid="filter-type-expense"
-                class="min-h-[44px] rounded-lg px-3 py-1.5 text-xs font-semibold"
+                class="min-h-[48px] rounded-lg px-3.5 py-2 text-xs font-semibold"
                 :class="
                   store.typeFilter === 'expense'
                     ? 'bg-rose-500 text-slate-950'

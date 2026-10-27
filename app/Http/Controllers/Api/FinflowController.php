@@ -50,7 +50,7 @@ class FinflowController extends Controller
                     'total_income_cents' => $totalIncomeCents,
                     'total_expense_cents' => $totalExpenseCents,
                     'net_balance_cents' => $totalIncomeCents - $totalExpenseCents,
-                    'transactions_count' => $transactions->count(),
+                    'transactions_count' => FinancialTransaction::query()->count(),
                 ],
                 'by_category' => $byCategory,
                 'transactions' => $transactions,
@@ -126,7 +126,7 @@ class FinflowController extends Controller
         ]);
 
         $rule = CategoryRule::query()->create([
-            'pattern' => strtoupper(trim($validated['pattern'])),
+            'pattern' => mb_strtoupper(trim($validated['pattern'])),
             'category' => trim($validated['category']),
             'priority' => $validated['priority'] ?? 10,
         ]);

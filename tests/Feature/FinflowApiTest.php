@@ -85,5 +85,20 @@ class FinflowApiTest extends TestCase
         $secondImport->assertStatus(200)
             ->assertJsonPath('data.imported_count', 0)
             ->assertJsonPath('data.skipped_duplicates', 2);
+
+        // Atomic rollback test: invalid 2nd line rolls back the entire batch and returns 422
+        $invalidCsv = implode("\n", [
+            'date,description,amount_cents,type',
+            '2026-10-19,VALID ROW SHOULD ROLLBACK,5000,expense',
+            '2026-10-20,INVALID AMOUNT ROW,not_a_number,expense',
+        ]);
+
+        $this->postJson('/api/v1/transactions/import-csv', [
+            'csv_content' => $invalidCsv,
+        ])->assertStatus(422);
+
+        $this->assertDatabaseMissing('financial_transactions', [
+            'description' => 'VALID ROW SHOULD ROLLBACK',
+        ]);
     }
 }

@@ -40,12 +40,20 @@ class CsvStatementImporter
                 }
 
                 [$occurredOn, $description, $amountCentsRaw, $type] = array_map('trim', $columns);
-                $normalizedType = in_array($type, ['income', 'expense'], true) ? $type : 'expense';
-                $amountCents = max(1, (int) $amountCentsRaw);
+
+                if (! ctype_digit($amountCentsRaw) || (int) $amountCentsRaw < 1) {
+                    throw new InvalidArgumentException('Valor em centavos inválido na linha '.($index + 2));
+                }
+
+                if (! in_array($type, ['income', 'expense'], true)) {
+                    throw new InvalidArgumentException('Tipo de transação inválido na linha '.($index + 2));
+                }
+
+                $amountCents = (int) $amountCentsRaw;
 
                 $externalHash = hash(
                     'sha256',
-                    strtolower("{$occurredOn}|{$description}|{$amountCents}|{$normalizedType}")
+                    mb_strtolower("{$occurredOn}|{$description}|{$amountCents}|{$type}")
                 );
 
                 if (FinancialTransaction::query()->where('external_hash', $externalHash)->exists()) {
@@ -54,13 +62,13 @@ class CsvStatementImporter
                     continue;
                 }
 
-                $classification = $this->categorizer->classify($description, $normalizedType, $rules);
+                $classification = $this->categorizer->classify($description, $type, $rules);
 
                 $created = FinancialTransaction::query()->create([
                     'external_hash' => $externalHash,
                     'description' => $description,
                     'amount_cents' => $amountCents,
-                    'type' => $normalizedType,
+                    'type' => $type,
                     'category' => $classification['category'],
                     'matched_rule' => $classification['matched_rule'],
                     'occurred_on' => $occurredOn,
