@@ -27,6 +27,7 @@ export const useFinflowStore = defineStore('finflow', () => {
 
   const typeFilter = ref<'all' | 'income' | 'expense'>('all')
   const lastImportFeedback = ref<string>('')
+  const errorFeedback = ref<string>('')
   const isLoading = ref<boolean>(false)
 
   let apiAdapter: FinflowApiPort = new HttpFinflowApiAdapter()
@@ -56,10 +57,16 @@ export const useFinflowStore = defineStore('finflow', () => {
   })
 
   async function submitCsvImport(csvContent: string) {
-    const result = await apiAdapter.importCsv(csvContent)
-    lastImportFeedback.value = `${result.imported_count} importada(s), ${result.skipped_duplicates} duplicada(s) ignorada(s)`
-    await loadDashboard()
-    return result
+    errorFeedback.value = ''
+    try {
+      const result = await apiAdapter.importCsv(csvContent)
+      lastImportFeedback.value = `${result.imported_count} importada(s), ${result.skipped_duplicates} duplicada(s) ignorada(s)`
+      await loadDashboard()
+      return result
+    } catch (err) {
+      errorFeedback.value = err instanceof Error ? err.message : 'Erro ao importar CSV.'
+      throw err
+    }
   }
 
   async function addTransaction(input: {
@@ -69,13 +76,80 @@ export const useFinflowStore = defineStore('finflow', () => {
     category?: string
     occurred_on: string
   }) {
-    await apiAdapter.createTransaction(input)
-    await loadDashboard()
+    errorFeedback.value = ''
+    try {
+      await apiAdapter.createTransaction(input)
+      await loadDashboard()
+    } catch (err) {
+      errorFeedback.value = err instanceof Error ? err.message : 'Erro ao criar transação.'
+      throw err
+    }
+  }
+
+  async function editTransaction(
+    id: number,
+    input: {
+      description?: string
+      amount_cents?: number
+      type?: 'income' | 'expense'
+      category?: string
+    }
+  ) {
+    errorFeedback.value = ''
+    try {
+      await apiAdapter.updateTransaction(id, input)
+      await loadDashboard()
+    } catch (err) {
+      errorFeedback.value = err instanceof Error ? err.message : 'Erro ao atualizar transação.'
+      throw err
+    }
+  }
+
+  async function removeTransaction(id: number) {
+    errorFeedback.value = ''
+    try {
+      await apiAdapter.deleteTransaction(id)
+      await loadDashboard()
+    } catch (err) {
+      errorFeedback.value = err instanceof Error ? err.message : 'Erro ao excluir transação.'
+      throw err
+    }
   }
 
   async function addRule(input: { pattern: string; category: string; priority: number }) {
-    await apiAdapter.createRule(input)
-    await loadDashboard()
+    errorFeedback.value = ''
+    try {
+      await apiAdapter.createRule(input)
+      await loadDashboard()
+    } catch (err) {
+      errorFeedback.value = err instanceof Error ? err.message : 'Erro ao criar regra.'
+      throw err
+    }
+  }
+
+  async function editRule(
+    id: number,
+    input: { pattern?: string; category?: string; priority?: number }
+  ) {
+    errorFeedback.value = ''
+    try {
+      await apiAdapter.updateRule(id, input)
+      await loadDashboard()
+    } catch (err) {
+      errorFeedback.value = err instanceof Error ? err.message : 'Erro ao atualizar regra.'
+      throw err
+    }
+  }
+
+  async function removeRule(id: number) {
+    errorFeedback.value = ''
+    try {
+      await apiAdapter.deleteRule(id)
+      await loadDashboard()
+    } catch (err) {
+      errorFeedback.value = err instanceof Error ? err.message : 'Erro ao excluir regra.'
+      throw err
+    }
   }
 
   return {
@@ -85,12 +159,17 @@ export const useFinflowStore = defineStore('finflow', () => {
     summary,
     typeFilter,
     lastImportFeedback,
+    errorFeedback,
     isLoading,
     filteredTransactions,
     setApiAdapter,
     loadDashboard,
     submitCsvImport,
     addTransaction,
-    addRule
+    editTransaction,
+    removeTransaction,
+    addRule,
+    editRule,
+    removeRule
   }
 })

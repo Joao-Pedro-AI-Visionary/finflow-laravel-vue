@@ -37,6 +37,16 @@ export interface FinflowApiPort {
     category?: string
     occurred_on: string
   }): Promise<FinancialTransactionDto>
+  updateTransaction(
+    id: number,
+    input: {
+      description?: string
+      amount_cents?: number
+      type?: 'income' | 'expense'
+      category?: string
+    }
+  ): Promise<FinancialTransactionDto>
+  deleteTransaction(id: number): Promise<void>
   importCsv(csvContent: string): Promise<{
     imported_count: number
     skipped_duplicates: number
@@ -47,4 +57,13 @@ export interface FinflowApiPort {
     category: string
     priority: number
   }): Promise<CategoryRuleDto>
+  updateRule(
+    id: number,
+    input: {
+      pattern?: string
+      category?: string
+      priority?: number
+    }
+  ): Promise<CategoryRuleDto>
+  deleteRule(id: number): Promise<void>
 }

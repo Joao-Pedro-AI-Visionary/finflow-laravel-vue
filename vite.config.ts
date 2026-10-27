@@ -13,7 +13,14 @@ export default defineConfig({
   publicDir: false,
   build: {
     outDir: 'public/build',
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/finflow.js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/finflow.[ext]'
+      }
+    }
   },
   test: {
     environment: 'happy-dom',

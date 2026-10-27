@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('category_rules', function (Blueprint $table) {
             $table->id();
-            $table->string('pattern', 120);
+            $table->string('pattern', 120)->unique();
             $table->string('category', 80);
             $table->integer('priority')->default(10)->index();
             $table->timestamps();

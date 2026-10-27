@@ -101,4 +101,45 @@ class FinflowApiTest extends TestCase
             'description' => 'VALID ROW SHOULD ROLLBACK',
         ]);
     }
+
+    public function test_supports_full_crud_on_transactions_and_rules_with_unique_pattern_constraint(): void
+    {
+        $rule = $this->postJson('/api/v1/rules', [
+            'pattern' => 'NETFLIX',
+            'category' => 'Streaming',
+            'priority' => 15,
+        ])->assertStatus(201)->json('data');
+
+        // Duplicate rule pattern rejected with 422
+        $this->postJson('/api/v1/rules', [
+            'pattern' => 'NETFLIX',
+            'category' => 'Duplicada',
+            'priority' => 10,
+        ])->assertStatus(422);
+
+        // Update rule via PUT
+        $this->putJson("/api/v1/rules/{$rule['id']}", [
+            'category' => 'Lazer & Streaming',
+            'priority' => 30,
+        ])->assertStatus(200)
+            ->assertJsonPath('data.category', 'Lazer & Streaming');
+
+        // Create transaction, update via PUT, delete via DELETE
+        $tx = $this->postJson('/api/v1/transactions', [
+            'description' => 'NETFLIX ASSINATURA',
+            'amount_cents' => 5590,
+            'type' => 'expense',
+            'occurred_on' => '2026-10-21',
+        ])->assertStatus(201)->json('data');
+
+        $this->putJson("/api/v1/transactions/{$tx['id']}", [
+            'description' => 'NETFLIX PREMIUM 4K',
+            'amount_cents' => 5990,
+        ])->assertStatus(200)
+            ->assertJsonPath('data.description', 'NETFLIX PREMIUM 4K')
+            ->assertJsonPath('data.amount_cents', 5990);
+
+        $this->deleteJson("/api/v1/transactions/{$tx['id']}")->assertStatus(204);
+        $this->deleteJson("/api/v1/rules/{$rule['id']}")->assertStatus(204);
+    }
 }

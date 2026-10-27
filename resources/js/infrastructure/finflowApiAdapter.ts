@@ -5,12 +5,31 @@ import type {
   FinflowApiPort
 } from '@/contracts'
 
+async function extractErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const json = (await res.json()) as {
+      message?: string
+      errors?: Record<string, string[]>
+    }
+    const firstFieldErrors = json.errors ? Object.values(json.errors)[0] : undefined
+    if (firstFieldErrors?.[0]) {
+      return `Constraint ${res.status}: ${firstFieldErrors[0]}`
+    }
+    if (json.message) {
+      return `Constraint ${res.status}: ${json.message}`
+    }
+  } catch {
+    // ignore parse error
+  }
+  return fallback
+}
+
 export class HttpFinflowApiAdapter implements FinflowApiPort {
   async fetchDashboard(): Promise<DashboardPayloadDto> {
     const res = await fetch('/api/v1/dashboard', {
       headers: { Accept: 'application/json' }
     })
-    if (!res.ok) throw new Error('Falha ao carregar o dashboard financeiro.')
+    if (!res.ok) throw new Error(await extractErrorMessage(res, 'Falha ao carregar o dashboard financeiro.'))
     const json = (await res.json()) as { data: DashboardPayloadDto }
     return json.data
   }
@@ -30,9 +49,39 @@ export class HttpFinflowApiAdapter implements FinflowApiPort {
       },
       body: JSON.stringify(input)
     })
-    if (!res.ok) throw new Error('Falha ao registrar transação.')
+    if (!res.ok) throw new Error(await extractErrorMessage(res, 'Falha ao registrar transação.'))
     const json = (await res.json()) as { data: FinancialTransactionDto }
     return json.data
+  }
+
+  async updateTransaction(
+    id: number,
+    input: {
+      description?: string
+      amount_cents?: number
+      type?: 'income' | 'expense'
+      category?: string
+    }
+  ): Promise<FinancialTransactionDto> {
+    const res = await fetch(`/api/v1/transactions/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify(input)
+    })
+    if (!res.ok) throw new Error(await extractErrorMessage(res, 'Falha ao atualizar transação.'))
+    const json = (await res.json()) as { data: FinancialTransactionDto }
+    return json.data
+  }
+
+  async deleteTransaction(id: number): Promise<void> {
+    const res = await fetch(`/api/v1/transactions/${id}`, {
+      method: 'DELETE',
+      headers: { Accept: 'application/json' }
+    })
+    if (!res.ok) throw new Error(await extractErrorMessage(res, 'Falha ao excluir transação.'))
   }
 
   async importCsv(csvContent: string): Promise<{
@@ -48,7 +97,7 @@ export class HttpFinflowApiAdapter implements FinflowApiPort {
       },
       body: JSON.stringify({ csv_content: csvContent })
     })
-    if (!res.ok) throw new Error('Falha ao importar extrato CSV.')
+    if (!res.ok) throw new Error(await extractErrorMessage(res, 'Falha ao importar extrato CSV.'))
     const json = (await res.json()) as {
       data: {
         imported_count: number
@@ -72,9 +121,38 @@ export class HttpFinflowApiAdapter implements FinflowApiPort {
       },
       body: JSON.stringify(input)
     })
-    if (!res.ok) throw new Error('Falha ao criar regra de categorização.')
+    if (!res.ok) throw new Error(await extractErrorMessage(res, 'Falha ao criar regra de categorização.'))
     const json = (await res.json()) as { data: CategoryRuleDto }
     return json.data
+  }
+
+  async updateRule(
+    id: number,
+    input: {
+      pattern?: string
+      category?: string
+      priority?: number
+    }
+  ): Promise<CategoryRuleDto> {
+    const res = await fetch(`/api/v1/rules/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify(input)
+    })
+    if (!res.ok) throw new Error(await extractErrorMessage(res, 'Falha ao atualizar regra de categorização.'))
+    const json = (await res.json()) as { data: CategoryRuleDto }
+    return json.data
+  }
+
+  async deleteRule(id: number): Promise<void> {
+    const res = await fetch(`/api/v1/rules/${id}`, {
+      method: 'DELETE',
+      headers: { Accept: 'application/json' }
+    })
+    if (!res.ok) throw new Error(await extractErrorMessage(res, 'Falha ao excluir regra de categorização.'))
   }
 }
 
@@ -205,6 +283,29 @@ export class InMemoryFinflowApiAdapter implements FinflowApiPort {
     return created
   }
 
+  async updateTransaction(
+    id: number,
+    input: {
+      description?: string
+      amount_cents?: number
+      type?: 'income' | 'expense'
+      category?: string
+    }
+  ): Promise<FinancialTransactionDto> {
+    const idx = this.transactions.findIndex((t) => t.id === id)
+    if (idx === -1) throw new Error('Transação não encontrada.')
+    const updated: FinancialTransactionDto = {
+      ...this.transactions[idx],
+      ...input
+    }
+    this.transactions[idx] = updated
+    return updated
+  }
+
+  async deleteTransaction(id: number): Promise<void> {
+    this.transactions = this.transactions.filter((t) => t.id !== id)
+  }
+
   async importCsv(csvContent: string) {
     const lines = csvContent.trim().split(/\r?\n/).slice(1)
     const imported: FinancialTransactionDto[] = []
@@ -215,6 +316,9 @@ export class InMemoryFinflowApiAdapter implements FinflowApiPort {
       const [occurred_on, description, amountRaw, typeRaw] = line.split(',').map((s) => s.trim())
       const type = typeRaw === 'income' ? 'income' : 'expense'
       const amount_cents = Number(amountRaw)
+      if (!occurred_on || !description || !Number.isFinite(amount_cents) || amount_cents < 1) {
+        throw new Error('Constraint 422: Linha CSV inválida.')
+      }
       const hashKey = `${occurred_on}|${description.toLowerCase()}|${amount_cents}|${type}`
 
       if (this.transactions.some((t) => t.external_hash === hashKey)) {
@@ -249,13 +353,40 @@ export class InMemoryFinflowApiAdapter implements FinflowApiPort {
     category: string
     priority: number
   }): Promise<CategoryRuleDto> {
+    const upper = input.pattern.toUpperCase()
+    if (this.rules.some((r) => r.pattern.toUpperCase() === upper)) {
+      throw new Error('Constraint 422: Padrão de regra já cadastrado.')
+    }
     const created: CategoryRuleDto = {
       id: Date.now(),
-      pattern: input.pattern.toUpperCase(),
+      pattern: upper,
       category: input.category,
       priority: input.priority
     }
     this.rules.unshift(created)
     return created
+  }
+
+  async updateRule(
+    id: number,
+    input: {
+      pattern?: string
+      category?: string
+      priority?: number
+    }
+  ): Promise<CategoryRuleDto> {
+    const idx = this.rules.findIndex((r) => r.id === id)
+    if (idx === -1) throw new Error('Regra não encontrada.')
+    const updated: CategoryRuleDto = {
+      ...this.rules[idx],
+      ...input,
+      pattern: (input.pattern ?? this.rules[idx].pattern).toUpperCase()
+    }
+    this.rules[idx] = updated
+    return updated
+  }
+
+  async deleteRule(id: number): Promise<void> {
+    this.rules = this.rules.filter((r) => r.id !== id)
   }
 }

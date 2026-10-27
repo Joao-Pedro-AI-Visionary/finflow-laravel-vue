@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import type { CategoryRuleDto, FinancialTransactionDto } from '@/contracts'
 import { formatBrlCents, useFinflowStore } from '@/stores/useFinflowStore'
 
 const store = useFinflowStore()
@@ -18,9 +19,17 @@ const quickDesc = ref('')
 const quickAmountInput = ref('')
 const quickType = ref<'income' | 'expense'>('expense')
 
+// Estado de edição de transação (CRUD - Update)
+const editingTxId = ref<number | null>(null)
+const editTxDesc = ref('')
+const editTxAmountCents = ref(0)
+const editTxCategory = ref('')
+
+// Estado de regra de categorização (CRUD - Create & Update)
 const newRulePattern = ref('')
 const newRuleCategory = ref('')
 const newRulePriority = ref(25)
+const editingRuleId = ref<number | null>(null)
 
 // Efeito Zeigarnik (10) & Gradiente de Meta (11): Taxa de poupança / saúde operacional
 const savingsRatePct = computed(() => {
@@ -48,34 +57,108 @@ function parseFlexibleCurrencyToCents(raw: string): number {
 
 async function handleQuickTransaction() {
   const amountCents = parseFlexibleCurrencyToCents(quickAmountInput.value)
-  if (!quickDesc.value.trim() || amountCents < 1) return
+  if (!quickDesc.value.trim() || amountCents < 1) {
+    store.errorFeedback = 'Constraint 422: Informe descrição e valor maior que zero.'
+    return
+  }
 
-  await store.addTransaction({
-    description: quickDesc.value.trim(),
-    amount_cents: amountCents,
-    type: quickType.value,
-    occurred_on: new Date().toISOString().slice(0, 10)
-  })
+  try {
+    await store.addTransaction({
+      description: quickDesc.value.trim(),
+      amount_cents: amountCents,
+      type: quickType.value,
+      occurred_on: new Date().toISOString().slice(0, 10)
+    })
+    quickDesc.value = ''
+    quickAmountInput.value = ''
+    showQuickEntry.value = false
+  } catch {
+    // store.errorFeedback already populated
+  }
+}
 
-  quickDesc.value = ''
-  quickAmountInput.value = ''
-  showQuickEntry.value = false
+function startEditTransaction(tx: FinancialTransactionDto) {
+  editingTxId.value = tx.id
+  editTxDesc.value = tx.description
+  editTxAmountCents.value = tx.amount_cents
+  editTxCategory.value = tx.category
+}
+
+async function saveEditTransaction(id: number) {
+  if (!editTxDesc.value.trim() || editTxAmountCents.value < 1) {
+    store.errorFeedback = 'Constraint 422: Descrição e valor válido são obrigatórios.'
+    return
+  }
+  try {
+    await store.editTransaction(id, {
+      description: editTxDesc.value.trim(),
+      amount_cents: Number(editTxAmountCents.value),
+      category: editTxCategory.value.trim() || 'Outros'
+    })
+    editingTxId.value = null
+  } catch {
+    // store.errorFeedback already populated
+  }
+}
+
+async function handleDeleteTransaction(id: number) {
+  try {
+    await store.removeTransaction(id)
+  } catch {
+    // store.errorFeedback already populated
+  }
 }
 
 async function handleImportCsv() {
   if (!csvContent.value.trim()) return
-  await store.submitCsvImport(csvContent.value)
+  try {
+    await store.submitCsvImport(csvContent.value)
+  } catch {
+    // store.errorFeedback already populated
+  }
 }
 
-async function handleCreateRule() {
-  if (!newRulePattern.value.trim() || !newRuleCategory.value.trim()) return
-  await store.addRule({
-    pattern: newRulePattern.value.trim(),
-    category: newRuleCategory.value.trim(),
-    priority: Number(newRulePriority.value) || 10
-  })
-  newRulePattern.value = ''
-  newRuleCategory.value = ''
+function startEditRule(rule: CategoryRuleDto) {
+  editingRuleId.value = rule.id
+  newRulePattern.value = rule.pattern
+  newRuleCategory.value = rule.category
+  newRulePriority.value = rule.priority
+}
+
+async function handleSaveRule() {
+  if (!newRulePattern.value.trim() || !newRuleCategory.value.trim()) {
+    store.errorFeedback = 'Constraint 422: Padrão e categoria da regra são obrigatórios.'
+    return
+  }
+  try {
+    if (editingRuleId.value !== null) {
+      await store.editRule(editingRuleId.value, {
+        pattern: newRulePattern.value.trim(),
+        category: newRuleCategory.value.trim(),
+        priority: Number(newRulePriority.value) || 10
+      })
+      editingRuleId.value = null
+    } else {
+      await store.addRule({
+        pattern: newRulePattern.value.trim(),
+        category: newRuleCategory.value.trim(),
+        priority: Number(newRulePriority.value) || 10
+      })
+    }
+    newRulePattern.value = ''
+    newRuleCategory.value = ''
+    newRulePriority.value = 25
+  } catch {
+    // store.errorFeedback already populated
+  }
+}
+
+async function handleDeleteRule(id: number) {
+  try {
+    await store.removeRule(id)
+  } catch {
+    // store.errorFeedback already populated
+  }
 }
 </script>
 
@@ -105,6 +188,7 @@ async function handleCreateRule() {
           <!-- Lei de Fitts (01) & Lei de Hick (02): Alvo 48px + Revelação Progressiva -->
           <button
             type="button"
+            data-testid="toggle-quick-entry-btn"
             class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:border-cyan-400"
             @click="showQuickEntry = !showQuickEntry"
           >
@@ -115,28 +199,40 @@ async function handleCreateRule() {
     </header>
 
     <main class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
+      <!-- Alerta Global de Constraint / Validação -->
+      <div
+        v-if="store.errorFeedback"
+        data-testid="finflow-error-alert"
+        role="alert"
+        class="rounded-xl border border-rose-500/40 bg-rose-950/60 px-4 py-3 font-mono text-xs text-rose-200"
+      >
+        {{ store.errorFeedback }}
+      </div>
+
       <!-- Quick Manual Transaction Form (Progressive Disclosure - Lei de Hick 02 & Lei de Postel 16) -->
       <form
         v-if="showQuickEntry"
+        data-testid="quick-entry-form"
         class="grid grid-cols-1 gap-3 rounded-xl border border-cyan-500/40 bg-[#0F172A] p-4 sm:grid-cols-4"
         @submit.prevent="handleQuickTransaction"
       >
         <input
           v-model="quickDesc"
+          data-testid="quick-desc-input"
           type="text"
-          required
-          placeholder="Descrição (ex: Uber Aeroporto)"
+          placeholder="Descrição (ex: UBER AEROPORTO)"
           class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
         />
         <input
           v-model="quickAmountInput"
+          data-testid="quick-amount-input"
           type="text"
-          required
           placeholder="Valor (ex: 45,90 ou 4590)"
           class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
         />
         <select
           v-model="quickType"
+          data-testid="quick-type-select"
           class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
         >
           <option value="expense">Despesa (-)</option>
@@ -144,6 +240,7 @@ async function handleCreateRule() {
         </select>
         <button
           type="submit"
+          data-testid="quick-submit-btn"
           class="min-h-[48px] rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400"
         >
           Registrar (Auto-Categoria)
@@ -154,14 +251,20 @@ async function handleCreateRule() {
       <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div class="rounded-xl border border-slate-800 bg-[#0F172A] p-5">
           <p class="font-mono text-xs text-slate-400 uppercase">Receitas Acumuladas</p>
-          <p class="mt-2 font-mono text-2xl font-bold text-emerald-400">
+          <p
+            data-testid="total-income"
+            class="mt-2 font-mono text-2xl font-bold text-emerald-400"
+          >
             {{ formatBrlCents(store.summary.total_income_cents) }}
           </p>
         </div>
 
         <div class="rounded-xl border border-slate-800 bg-[#0F172A] p-5">
           <p class="font-mono text-xs text-slate-400 uppercase">Despesas Categorizadas</p>
-          <p class="mt-2 font-mono text-2xl font-bold text-rose-400">
+          <p
+            data-testid="total-expense"
+            class="mt-2 font-mono text-2xl font-bold text-rose-400"
+          >
             {{ formatBrlCents(store.summary.total_expense_cents) }}
           </p>
         </div>
@@ -204,6 +307,7 @@ async function handleCreateRule() {
             <!-- Efeito Von Restorff (07) & Lei de Fitts (01): CTA Primário exclusivo com 48px -->
             <button
               type="submit"
+              data-testid="csv-submit-btn"
               class="min-h-[48px] w-full rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
             >
               Processar Lote CSV em Transação
@@ -217,45 +321,75 @@ async function handleCreateRule() {
             </p>
           </form>
 
-          <!-- Automatic Categorization Rules -->
+          <!-- Automatic Categorization Rules (Full CRUD) -->
           <section class="space-y-3 rounded-xl border border-slate-800 bg-[#0F172A] p-5">
             <h2 class="text-base font-semibold text-slate-100">
               Motor de Regras de Categorização ({{ store.rules.length }})
             </h2>
-            <form class="grid grid-cols-1 gap-2 sm:grid-cols-3" @submit.prevent="handleCreateRule">
+            <form
+              data-testid="rule-form"
+              class="grid grid-cols-1 gap-2 sm:grid-cols-3"
+              @submit.prevent="handleSaveRule"
+            >
               <input
                 v-model="newRulePattern"
+                data-testid="rule-pattern-input"
                 type="text"
                 placeholder="Padrão (ex: NETFLIX)"
                 class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100"
               />
               <input
                 v-model="newRuleCategory"
+                data-testid="rule-category-input"
                 type="text"
                 placeholder="Categoria"
                 class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100"
               />
               <button
                 type="submit"
+                data-testid="rule-submit-btn"
                 class="min-h-[48px] rounded-lg border border-cyan-500/40 bg-cyan-500/15 px-3 py-2 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/25"
               >
-                + Criar Regra
+                {{ editingRuleId !== null ? 'Salvar Regra' : '+ Criar Regra' }}
               </button>
             </form>
 
-            <div class="flex flex-wrap gap-2 pt-2">
-              <span
+            <div class="space-y-2 pt-2">
+              <div
                 v-for="rule in store.rules"
                 :key="rule.id"
-                class="rounded-lg border border-slate-800 bg-slate-950 px-2.5 py-1 font-mono text-xs text-slate-300"
+                :data-testid="`rule-item-${rule.pattern}`"
+                class="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-xs text-slate-300"
               >
-                <strong class="text-cyan-400">{{ rule.pattern }}</strong> → {{ rule.category }} (P{{ rule.priority }})
-              </span>
+                <span>
+                  <strong class="text-cyan-400">{{ rule.pattern }}</strong> →
+                  <span :data-testid="`rule-cat-${rule.pattern}`">{{ rule.category }}</span>
+                  (P{{ rule.priority }})
+                </span>
+                <div class="flex gap-1.5">
+                  <button
+                    type="button"
+                    :data-testid="`edit-rule-${rule.pattern}`"
+                    class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-amber-300 hover:border-amber-400"
+                    @click="startEditRule(rule)"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    :data-testid="`delete-rule-${rule.pattern}`"
+                    class="rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-300 hover:bg-rose-500/20"
+                    @click="handleDeleteRule(rule.id)"
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </div>
             </div>
           </section>
         </aside>
 
-        <!-- Right Column: Transactions Ledger -->
+        <!-- Right Column: Transactions Ledger (Full CRUD) -->
         <section class="space-y-4 rounded-xl border border-slate-800 bg-[#0F172A] p-5 lg:col-span-7">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <h2 class="text-base font-semibold text-slate-100">
@@ -308,32 +442,98 @@ async function handleCreateRule() {
             <article
               v-for="tx in store.filteredTransactions"
               :key="tx.id"
-              class="flex items-center justify-between gap-4 py-3.5"
+              :data-testid="`tx-row-${tx.id}`"
+              class="py-3.5"
             >
-              <div>
-                <div class="flex items-center gap-2">
-                  <span class="font-mono text-xs text-slate-400">{{ tx.occurred_on }}</span>
-                  <span class="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-200">
-                    {{ tx.category }}
-                  </span>
-                  <span
-                    v-if="tx.matched_rule"
-                    class="rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[10px] text-cyan-300"
+              <div
+                v-if="editingTxId === tx.id"
+                class="grid grid-cols-1 gap-2 rounded-lg border border-cyan-500/40 bg-slate-950 p-3 sm:grid-cols-4"
+              >
+                <input
+                  v-model="editTxDesc"
+                  :data-testid="`edit-tx-desc-${tx.id}`"
+                  type="text"
+                  class="min-h-[40px] rounded border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100"
+                />
+                <input
+                  v-model.number="editTxAmountCents"
+                  :data-testid="`edit-tx-amount-${tx.id}`"
+                  type="number"
+                  min="1"
+                  class="min-h-[40px] rounded border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100"
+                />
+                <input
+                  v-model="editTxCategory"
+                  :data-testid="`edit-tx-category-${tx.id}`"
+                  type="text"
+                  class="min-h-[40px] rounded border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100"
+                />
+                <div class="flex gap-1.5">
+                  <button
+                    type="button"
+                    :data-testid="`save-tx-${tx.id}`"
+                    class="rounded bg-cyan-500 px-3 py-1 text-xs font-semibold text-slate-950"
+                    @click="saveEditTransaction(tx.id)"
                   >
-                    regra: {{ tx.matched_rule }}
-                  </span>
+                    Salvar
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded border border-slate-700 px-2 py-1 text-xs text-slate-300"
+                    @click="editingTxId = null"
+                  >
+                    Cancelar
+                  </button>
                 </div>
-                <p class="mt-1 text-sm font-medium text-slate-100">
-                  {{ tx.description }}
-                </p>
               </div>
 
-              <span
-                class="font-mono text-sm font-bold"
-                :class="tx.type === 'income' ? 'text-emerald-400' : 'text-rose-400'"
-              >
-                {{ tx.type === 'income' ? '+' : '-' }} {{ formatBrlCents(tx.amount_cents) }}
-              </span>
+              <div v-else class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono text-xs text-slate-400">{{ tx.occurred_on }}</span>
+                    <span class="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-200">
+                      {{ tx.category }}
+                    </span>
+                    <span
+                      v-if="tx.matched_rule"
+                      class="rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[10px] text-cyan-300"
+                    >
+                      regra: {{ tx.matched_rule }}
+                    </span>
+                  </div>
+                  <p
+                    :data-testid="`tx-desc-${tx.id}`"
+                    class="mt-1 text-sm font-medium text-slate-100"
+                  >
+                    {{ tx.description }}
+                  </p>
+                </div>
+
+                <div class="flex items-center gap-3">
+                  <span
+                    class="font-mono text-sm font-bold"
+                    :class="tx.type === 'income' ? 'text-emerald-400' : 'text-rose-400'"
+                  >
+                    {{ tx.type === 'income' ? '+' : '-' }} {{ formatBrlCents(tx.amount_cents) }}
+                  </span>
+                  <button
+                    type="button"
+                    :data-testid="`edit-tx-btn-${tx.id}`"
+                    class="rounded border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-amber-300 hover:border-amber-400"
+                    @click="startEditTransaction(tx)"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    :data-testid="`delete-tx-btn-${tx.id}`"
+                    class="rounded border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs text-rose-300 hover:bg-rose-500/20"
+                    @click="handleDeleteTransaction(tx.id)"
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </div>
             </article>
           </div>
         </section>
