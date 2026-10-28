@@ -163,33 +163,33 @@ async function handleDeleteRule(id: number) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#090D16] text-slate-100">
-    <!-- Header (Efeito de Posição Serial 08: Identidade à esquerda, ação rápida à direita) -->
-    <header class="border-b border-slate-800/80 bg-[#0F172A]/95">
-      <div class="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+  <div class="min-h-screen bg-[#F8FAFC] text-slate-900 antialiased selection:bg-sky-100 selection:text-sky-900">
+    <!-- Header (Dribbble High-End Editorial Fintech) -->
+    <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md shadow-xs">
+      <div class="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div class="flex items-center gap-3">
-          <div class="flex h-11 w-11 items-center justify-center rounded-lg border border-cyan-500/40 bg-cyan-500/10 font-mono text-sm font-bold text-cyan-300">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 font-mono text-sm font-bold text-sky-400 shadow-xs">
             FF
           </div>
           <div>
-            <span class="font-mono text-xs font-bold tracking-wider text-cyan-400">
+            <span class="font-mono text-[11px] font-bold tracking-wider text-sky-600 uppercase">
               FINFLOW // LARAVEL 12 + VUE 3.5
             </span>
-            <h1 class="text-lg font-bold text-slate-50">
+            <h1 class="text-lg font-bold text-slate-900">
               Intelligent Cashflow & Idempotent CSV Rule Engine
             </h1>
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-3">
-          <span class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 font-mono text-xs text-emerald-300">
+        <div class="flex flex-wrap items-center gap-2.5">
+          <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 font-mono text-xs font-semibold text-emerald-700">
             Taxa de Retenção: {{ savingsRatePct }}%
           </span>
           <!-- Lei de Fitts (01) & Lei de Hick (02): Alvo 48px + Revelação Progressiva -->
           <button
             type="button"
             data-testid="toggle-quick-entry-btn"
-            class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:border-cyan-400"
+            class="min-h-[44px] rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-slate-800 transition"
             @click="showQuickEntry = !showQuickEntry"
           >
             {{ showQuickEntry ? 'Fechar Lançamento' : '+ Lançamento Rápido' }}
@@ -204,7 +204,7 @@ async function handleDeleteRule(id: number) {
         v-if="store.errorFeedback"
         data-testid="finflow-error-alert"
         role="alert"
-        class="rounded-xl border border-rose-500/40 bg-rose-950/60 px-4 py-3 font-mono text-xs text-rose-200"
+        class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 font-mono text-xs font-medium text-rose-700 shadow-xs"
       >
         {{ store.errorFeedback }}
       </div>
@@ -213,7 +213,7 @@ async function handleDeleteRule(id: number) {
       <form
         v-if="showQuickEntry"
         data-testid="quick-entry-form"
-        class="grid grid-cols-1 gap-3 rounded-xl border border-cyan-500/40 bg-[#0F172A] p-4 sm:grid-cols-4"
+        class="grid grid-cols-1 gap-3 rounded-2xl border border-sky-200 bg-white p-5 shadow-sm sm:grid-cols-4"
         @submit.prevent="handleQuickTransaction"
       >
         <input
@@ -221,19 +221,19 @@ async function handleDeleteRule(id: number) {
           data-testid="quick-desc-input"
           type="text"
           placeholder="Descrição (ex: UBER AEROPORTO)"
-          class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+          class="min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:bg-white focus:border-sky-600 focus:ring-2 focus:ring-sky-500/20 shadow-2xs"
         />
         <input
           v-model="quickAmountInput"
           data-testid="quick-amount-input"
           type="text"
           placeholder="Valor (ex: 45,90 ou 4590)"
-          class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+          class="min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:bg-white focus:border-sky-600 focus:ring-2 focus:ring-sky-500/20 shadow-2xs"
         />
         <select
           v-model="quickType"
           data-testid="quick-type-select"
-          class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+          class="min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-800 focus:bg-white focus:border-sky-600 shadow-2xs"
         >
           <option value="expense">Despesa (-)</option>
           <option value="income">Receita (+)</option>
@@ -241,7 +241,7 @@ async function handleDeleteRule(id: number) {
         <button
           type="submit"
           data-testid="quick-submit-btn"
-          class="min-h-[48px] rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-400"
+          class="min-h-[44px] rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 transition shadow-xs"
         >
           Registrar (Auto-Categoria)
         </button>
@@ -249,31 +249,31 @@ async function handleDeleteRule(id: number) {
 
       <!-- KPI Telemetry Cards (Lei de Miller 05 & Conectividade Uniforme 14) -->
       <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div class="rounded-xl border border-slate-800 bg-[#0F172A] p-5">
-          <p class="font-mono text-xs text-slate-400 uppercase">Receitas Acumuladas</p>
+        <div class="rounded-2xl border border-slate-200/90 bg-white p-5.5 shadow-xs">
+          <p class="font-mono text-xs font-semibold text-slate-500 uppercase">Receitas Acumuladas</p>
           <p
             data-testid="total-income"
-            class="mt-2 font-mono text-2xl font-bold text-emerald-400"
+            class="mt-2 font-mono text-2xl font-bold text-emerald-600"
           >
             {{ formatBrlCents(store.summary.total_income_cents) }}
           </p>
         </div>
 
-        <div class="rounded-xl border border-slate-800 bg-[#0F172A] p-5">
-          <p class="font-mono text-xs text-slate-400 uppercase">Despesas Categorizadas</p>
+        <div class="rounded-2xl border border-slate-200/90 bg-white p-5.5 shadow-xs">
+          <p class="font-mono text-xs font-semibold text-slate-500 uppercase">Despesas Categorizadas</p>
           <p
             data-testid="total-expense"
-            class="mt-2 font-mono text-2xl font-bold text-rose-400"
+            class="mt-2 font-mono text-2xl font-bold text-rose-600"
           >
             {{ formatBrlCents(store.summary.total_expense_cents) }}
           </p>
         </div>
 
-        <div class="rounded-xl border border-cyan-500/40 bg-[#0F172A] p-5">
-          <p class="font-mono text-xs text-cyan-300 uppercase">Saldo Líquido Operacional</p>
+        <div class="rounded-2xl border border-slate-200/90 bg-white p-5.5 shadow-xs">
+          <p class="font-mono text-xs font-semibold text-sky-700 uppercase">Saldo Líquido Operacional</p>
           <p
             data-testid="net-balance"
-            class="mt-2 font-mono text-2xl font-bold text-slate-50"
+            class="mt-2 font-mono text-2xl font-black text-slate-900"
           >
             {{ formatBrlCents(store.summary.net_balance_cents) }}
           </p>
@@ -286,44 +286,46 @@ async function handleDeleteRule(id: number) {
         <aside class="space-y-6 lg:col-span-5">
           <form
             data-testid="csv-import-form"
-            class="space-y-3 rounded-xl border border-slate-800 bg-[#0F172A] p-5"
+            class="space-y-3.5 rounded-2xl border border-slate-200/90 bg-white p-5.5 shadow-xs"
             @submit.prevent="handleImportCsv"
           >
             <div class="flex items-center justify-between">
-              <h2 class="text-base font-semibold text-slate-100">
+              <h2 class="text-base font-bold text-slate-900">
                 Importador CSV Idempotente
               </h2>
-              <span class="font-mono text-[11px] text-cyan-400">SHA-256 Hash Guard</span>
+              <span class="rounded-full bg-sky-50 border border-sky-200 px-2.5 py-0.5 font-mono text-[10px] font-bold text-sky-700">
+                SHA-256 Hash Guard
+              </span>
             </div>
-            <p class="text-xs text-slate-400">
-              Cole linhas no formato <code class="text-slate-200">date,description,amount_cents,type</code>. Linhas repetidas são ignoradas automaticamente pelo backend Laravel.
+            <p class="text-xs text-slate-500 leading-relaxed">
+              Cole linhas no formato <code class="font-mono font-semibold text-slate-800 bg-slate-100 px-1 py-0.5 rounded">date,description,amount_cents,type</code>. Linhas repetidas são ignoradas automaticamente pelo backend Laravel.
             </p>
             <textarea
               v-model="csvContent"
               data-testid="csv-textarea"
               rows="4"
-              class="w-full rounded-lg border border-slate-700 bg-slate-950 p-3 font-mono text-xs text-slate-200"
+              class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-900 focus:bg-white focus:border-sky-600 focus:ring-2 focus:ring-sky-500/20 shadow-2xs"
             ></textarea>
             <!-- Efeito Von Restorff (07) & Lei de Fitts (01): CTA Primário exclusivo com 48px -->
             <button
               type="submit"
               data-testid="csv-submit-btn"
-              class="min-h-[48px] w-full rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+              class="min-h-[48px] w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 shadow-xs"
             >
               Processar Lote CSV em Transação
             </button>
             <p
               v-if="store.lastImportFeedback"
               data-testid="import-feedback"
-              class="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 font-mono text-xs text-emerald-300"
+              class="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 font-mono text-xs font-semibold text-emerald-800 shadow-2xs"
             >
               {{ store.lastImportFeedback }}
             </p>
           </form>
 
           <!-- Automatic Categorization Rules (Full CRUD) -->
-          <section class="space-y-3 rounded-xl border border-slate-800 bg-[#0F172A] p-5">
-            <h2 class="text-base font-semibold text-slate-100">
+          <section class="space-y-3.5 rounded-2xl border border-slate-200/90 bg-white p-5.5 shadow-xs">
+            <h2 class="text-base font-bold text-slate-900">
               Motor de Regras de Categorização ({{ store.rules.length }})
             </h2>
             <form
@@ -336,19 +338,19 @@ async function handleDeleteRule(id: number) {
                 data-testid="rule-pattern-input"
                 type="text"
                 placeholder="Padrão (ex: NETFLIX)"
-                class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100"
+                class="min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:bg-white focus:border-sky-600 shadow-2xs"
               />
               <input
                 v-model="newRuleCategory"
                 data-testid="rule-category-input"
                 type="text"
                 placeholder="Categoria"
-                class="min-h-[48px] rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100"
+                class="min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 focus:bg-white focus:border-sky-600 shadow-2xs"
               />
               <button
                 type="submit"
                 data-testid="rule-submit-btn"
-                class="min-h-[48px] rounded-lg border border-cyan-500/40 bg-cyan-500/15 px-3 py-2 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/25"
+                class="min-h-[44px] rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800 hover:bg-sky-100 transition shadow-2xs"
               >
                 {{ editingRuleId !== null ? 'Salvar Regra' : '+ Criar Regra' }}
               </button>
@@ -359,18 +361,18 @@ async function handleDeleteRule(id: number) {
                 v-for="rule in store.rules"
                 :key="rule.id"
                 :data-testid="`rule-item-${rule.pattern}`"
-                class="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-xs text-slate-300"
+                class="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2 font-mono text-xs text-slate-800 shadow-2xs"
               >
                 <span>
-                  <strong class="text-cyan-400">{{ rule.pattern }}</strong> →
+                  <strong class="text-sky-700">{{ rule.pattern }}</strong> →
                   <span :data-testid="`rule-cat-${rule.pattern}`">{{ rule.category }}</span>
-                  (P{{ rule.priority }})
+                  <span class="text-slate-400 font-normal"> (P{{ rule.priority }})</span>
                 </span>
                 <div class="flex gap-1.5">
                   <button
                     type="button"
                     :data-testid="`edit-rule-${rule.pattern}`"
-                    class="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-amber-300 hover:border-amber-400"
+                    class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs"
                     @click="startEditRule(rule)"
                   >
                     Editar
@@ -378,7 +380,7 @@ async function handleDeleteRule(id: number) {
                   <button
                     type="button"
                     :data-testid="`delete-rule-${rule.pattern}`"
-                    class="rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-300 hover:bg-rose-500/20"
+                    class="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 shadow-2xs"
                     @click="handleDeleteRule(rule.id)"
                   >
                     Excluir
@@ -390,20 +392,20 @@ async function handleDeleteRule(id: number) {
         </aside>
 
         <!-- Right Column: Transactions Ledger (Full CRUD) -->
-        <section class="space-y-4 rounded-xl border border-slate-800 bg-[#0F172A] p-5 lg:col-span-7">
+        <section class="space-y-4 rounded-2xl border border-slate-200/90 bg-white p-5.5 shadow-xs lg:col-span-7">
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-base font-semibold text-slate-100">
+            <h2 class="text-base font-bold text-slate-900">
               Livro-Razão de Transações ({{ store.filteredTransactions.length }})
             </h2>
-            <div class="flex gap-2">
+            <div class="flex gap-1.5">
               <button
                 type="button"
                 data-testid="filter-type-all"
-                class="min-h-[48px] rounded-lg px-3.5 py-2 text-xs font-semibold"
+                class="min-h-[40px] rounded-xl px-3.5 py-1.5 text-xs font-semibold transition"
                 :class="
                   store.typeFilter === 'all'
-                    ? 'bg-cyan-500 text-slate-950'
-                    : 'border border-slate-800 bg-slate-900 text-slate-300'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                 "
                 @click="store.typeFilter = 'all'"
               >
@@ -412,11 +414,11 @@ async function handleDeleteRule(id: number) {
               <button
                 type="button"
                 data-testid="filter-type-income"
-                class="min-h-[48px] rounded-lg px-3.5 py-2 text-xs font-semibold"
+                class="min-h-[40px] rounded-xl px-3.5 py-1.5 text-xs font-semibold transition"
                 :class="
                   store.typeFilter === 'income'
-                    ? 'bg-emerald-500 text-slate-950'
-                    : 'border border-slate-800 bg-slate-900 text-slate-300'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                 "
                 @click="store.typeFilter = 'income'"
               >
@@ -425,11 +427,11 @@ async function handleDeleteRule(id: number) {
               <button
                 type="button"
                 data-testid="filter-type-expense"
-                class="min-h-[48px] rounded-lg px-3.5 py-2 text-xs font-semibold"
+                class="min-h-[40px] rounded-xl px-3.5 py-1.5 text-xs font-semibold transition"
                 :class="
                   store.typeFilter === 'expense'
-                    ? 'bg-rose-500 text-slate-950'
-                    : 'border border-slate-800 bg-slate-900 text-slate-300'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                 "
                 @click="store.typeFilter = 'expense'"
               >
@@ -438,7 +440,7 @@ async function handleDeleteRule(id: number) {
             </div>
           </div>
 
-          <div class="divide-y divide-slate-800/80">
+          <div class="divide-y divide-slate-100">
             <article
               v-for="tx in store.filteredTransactions"
               :key="tx.id"
@@ -447,39 +449,39 @@ async function handleDeleteRule(id: number) {
             >
               <div
                 v-if="editingTxId === tx.id"
-                class="grid grid-cols-1 gap-2 rounded-lg border border-cyan-500/40 bg-slate-950 p-3 sm:grid-cols-4"
+                class="grid grid-cols-1 gap-2.5 rounded-xl border border-sky-300 bg-sky-50/50 p-3 sm:grid-cols-4"
               >
                 <input
                   v-model="editTxDesc"
                   :data-testid="`edit-tx-desc-${tx.id}`"
                   type="text"
-                  class="min-h-[40px] rounded border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100"
+                  class="min-h-[40px] rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-900 shadow-2xs"
                 />
                 <input
                   v-model.number="editTxAmountCents"
                   :data-testid="`edit-tx-amount-${tx.id}`"
                   type="number"
                   min="1"
-                  class="min-h-[40px] rounded border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100"
+                  class="min-h-[40px] rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-900 shadow-2xs"
                 />
                 <input
                   v-model="editTxCategory"
                   :data-testid="`edit-tx-category-${tx.id}`"
                   type="text"
-                  class="min-h-[40px] rounded border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100"
+                  class="min-h-[40px] rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-900 shadow-2xs"
                 />
                 <div class="flex gap-1.5">
                   <button
                     type="button"
                     :data-testid="`save-tx-${tx.id}`"
-                    class="rounded bg-cyan-500 px-3 py-1 text-xs font-semibold text-slate-950"
+                    class="rounded-lg bg-sky-600 px-3 py-1 text-xs font-semibold text-white shadow-2xs"
                     @click="saveEditTransaction(tx.id)"
                   >
                     Salvar
                   </button>
                   <button
                     type="button"
-                    class="rounded border border-slate-700 px-2 py-1 text-xs text-slate-300"
+                    class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 shadow-2xs"
                     @click="editingTxId = null"
                   >
                     Cancelar
@@ -491,19 +493,19 @@ async function handleDeleteRule(id: number) {
                 <div>
                   <div class="flex items-center gap-2">
                     <span class="font-mono text-xs text-slate-400">{{ tx.occurred_on }}</span>
-                    <span class="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-200">
+                    <span class="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-700">
                       {{ tx.category }}
                     </span>
                     <span
                       v-if="tx.matched_rule"
-                      class="rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[10px] text-cyan-300"
+                      class="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 font-mono text-[10px] font-bold text-sky-700"
                     >
                       regra: {{ tx.matched_rule }}
                     </span>
                   </div>
                   <p
                     :data-testid="`tx-desc-${tx.id}`"
-                    class="mt-1 text-sm font-medium text-slate-100"
+                    class="mt-1 text-sm font-bold text-slate-900"
                   >
                     {{ tx.description }}
                   </p>
@@ -512,14 +514,14 @@ async function handleDeleteRule(id: number) {
                 <div class="flex items-center gap-3">
                   <span
                     class="font-mono text-sm font-bold"
-                    :class="tx.type === 'income' ? 'text-emerald-400' : 'text-rose-400'"
+                    :class="tx.type === 'income' ? 'text-emerald-600' : 'text-rose-600'"
                   >
                     {{ tx.type === 'income' ? '+' : '-' }} {{ formatBrlCents(tx.amount_cents) }}
                   </span>
                   <button
                     type="button"
                     :data-testid="`edit-tx-btn-${tx.id}`"
-                    class="rounded border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-amber-300 hover:border-amber-400"
+                    class="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition shadow-2xs"
                     @click="startEditTransaction(tx)"
                   >
                     Editar
@@ -527,7 +529,7 @@ async function handleDeleteRule(id: number) {
                   <button
                     type="button"
                     :data-testid="`delete-tx-btn-${tx.id}`"
-                    class="rounded border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs text-rose-300 hover:bg-rose-500/20"
+                    class="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition shadow-2xs"
                     @click="handleDeleteTransaction(tx.id)"
                   >
                     Excluir
